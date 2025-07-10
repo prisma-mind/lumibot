@@ -135,7 +135,13 @@ class Trader:
             strat.verify_backtest_inputs(strat.backtesting_start, strat.backtesting_end)
             logger.info("Backtesting starting...")
 
-        signal.signal(signal.SIGINT, self._stop_pool)
+        try:
+            signal.signal(signal.SIGINT, self._stop_pool)
+        except ValueError:
+            logger.warning(
+                "Could not set signal handler for SIGINT. "
+                "This is expected if you are not running in the main thread."
+            )
         self._set_logger()
         self._init_pool()
         self._start_pool()

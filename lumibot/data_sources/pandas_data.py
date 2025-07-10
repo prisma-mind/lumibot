@@ -216,8 +216,14 @@ class PandasData(DataSourceBacktesting):
         # Takes an asset and returns the last known price
         tuple_to_find = self.find_asset_in_data_store(asset, quote)
 
-        if tuple_to_find in self._data_store:
-            data = self._data_store[tuple_to_find]
+        asset_condition = (tuple_to_find[0].symbol, tuple_to_find[1].symbol)
+        if asset_condition in [(k[0].symbol, k[1].symbol) for k in self._data_store.keys()]:
+        # if tuple_to_find in self._data_store:
+            for k, v in self._data_store.items():
+                if k[0].symbol == asset.symbol and k[1].symbol == quote.symbol:
+                    data = v
+                    break
+            # data = self._data_store[tuple_to_find]
             try:
                 dt = self.get_datetime()
                 price = data.get_last_price(dt)
@@ -298,9 +304,9 @@ class PandasData(DataSourceBacktesting):
         if asset in self._data_store:
             return asset
         elif quote is not None:
-            asset = (asset, quote)
-            if asset in self._data_store:
-                return asset
+            asset_condition = (asset.symbol, quote.symbol)
+            if asset_condition in [(k[0].symbol, k[1].symbol) for k in self._data_store.keys()]:
+                return (asset, quote)
         elif isinstance(asset, Asset) and asset.asset_type in ["option", "future", "stock", "index"]:
             asset = (asset, Asset("USD", "forex"))
             if asset in self._data_store:

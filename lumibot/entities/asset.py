@@ -221,7 +221,7 @@ class Asset:
         self.underlying_asset = underlying_asset
 
         # Leverage for futures assets (ignored for other asset types)
-        self.leverage = leverage if asset_type == self.AssetType.FUTURE else 1
+        self.leverage = leverage if asset_type in [self.AssetType.FUTURE, self.AssetType.CRYPTO_FUTURE] else 1
 
         # If the underlying asset is set but the symbol is not, set the symbol to the underlying asset symbol
         if self.underlying_asset is not None and self.symbol is None:

@@ -676,7 +676,7 @@ class _Strategy:
             for asset in assets_original:
                 if asset != self._quote_asset:
                     asset_is_option = False
-                    if asset.asset_type == "crypto" or asset.asset_type == "forex":
+                    if asset.asset_type in ["crypto", "forex"]:
                         asset = (asset, self._quote_asset)
                     elif asset.asset_type == "option":
                         asset_is_option = True
@@ -685,7 +685,7 @@ class _Strategy:
                         price = self.broker.option_source.get_last_price(asset)
                         prices[asset] = price
                     else:
-                        price = self.broker.data_source.get_last_price(asset)
+                        price = self.broker.data_source.get_last_price(asset, quote=self._quote_asset)
                         prices[asset] = price
                         
             for position in positions:
@@ -734,7 +734,8 @@ class _Strategy:
                 if isinstance(asset, tuple):
                     multiplier = 1
                 else:
-                    multiplier = asset.multiplier if asset.asset_type in ["option", "future"] else 1
+                    multiplier = asset.leverage if asset.asset_type in ["option", "future", "crypto_future"] else 1
+                
                 portfolio_value += float(quantity) * float(price) * multiplier
             self._portfolio_value = portfolio_value
         return portfolio_value
@@ -754,10 +755,21 @@ class _Strategy:
             price_dec = Decimal(str(price))
             multiplier_dec = Decimal(str(multiplier))
 
+            trade_value = quantity_dec * price_dec * multiplier_dec
+
             if side == "buy":
-                current_cash -= quantity_dec * price_dec * multiplier_dec
+                current_cash -= trade_value
             if side == "sell":
-                current_cash += quantity_dec * price_dec * multiplier_dec
+                current_cash += trade_value
+
+            # Bitunix fee calculation for crypto futures
+            # This is a simplified fee calculation. It assumes the asset is a crypto future if a multiplier is used.
+            # Bitunix has maker/taker fees. We'll use a conservative estimate (taker fee).
+            # VIP 0 taker fee is 0.0600% for futures.
+            if self.broker.name == "bitunix":
+                fee_rate = Decimal("0.0006")  # 0.06%
+                fee = trade_value * fee_rate
+                current_cash -= fee
 
             self._set_cash_position(float(current_cash)) # _set_cash_position expects float
 
@@ -1375,6 +1387,7 @@ class _Strategy:
                 **kwargs,
             )
             backtesting_broker = BacktestingBroker(data_source, options_source)
+        backtesting_broker.name = "bitunix"
 
         strategy = self(
             backtesting_broker,
